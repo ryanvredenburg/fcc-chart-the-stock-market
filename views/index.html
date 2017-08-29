@@ -1,54 +1,98 @@
-<!-- This is a static file -->
-<!-- served from your routes in server.js -->
+<!doctype html>
+<script src="https://code.jquery.com/jquery-3.1.1.min.js"></script>
+<script src="https://code.highcharts.com/stock/highstock.js"></script>
+<script src="https://code.highcharts.com/stock/modules/exporting.js"></script>
+<script src="/socket.io/socket.io.js"></script>
+<script src="https://code.jquery.com/jquery-1.11.1.js"></script>
+<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font: 13px Helvetica, Arial; }
+  form { background: #000; padding: 3px;  width: 100%; }
+  form input { border: 0; padding: 10px; width: 90%; margin-right: .5%; }
+  form button { width: 9%; background: rgb(130, 224, 255); border: none; padding: 10px; }}
+</style>
 
-<!-- You might want to try something fancier: -->
-<!-- html/nunjucks docs: https://mozilla.github.io/nunjucks/ -->
-<!-- pug: https://pugjs.org/ -->
-<!-- haml: http://haml.info/ -->
-<!-- hbs(handlebars): http://handlebarsjs.com/ -->
-
-<!DOCTYPE html>
 <html>
   <head>
-    <title>Welcome to Glitch!</title>
-    <meta name="description" content="A cool thing made with Glitch">
-    <link id="favicon" rel="icon" href="https://glitch.com/edit/favicon-app.ico" type="image/x-icon">
-    <meta charset="utf-8">
-    <meta http-equiv="X-UA-Compatible" content="IE=edge">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <link rel="stylesheet" href="/style.css">
+    <title>Missing Sock(et)s</title>
   </head>
   <body>
-    <header>
-      <h1>
-        A Dream of the Future
-      </h1>
-    </header>
-
-    <main>
-      <p class="bold">Oh hi,</p>
-      <p>Tell me your hopes and dreams:</p>
-      <form>
-        <input type="text" maxlength="100" placeholder="Dreams!">
-        <button type="submit">Submit</button>
-      </form>
-      <section class="dreams">
-        <ul id="dreams">
-        </ul>
-      </section>
-    </main>
-
-    <footer>
-      <a href="https://glitch.com">
-        Remix this in Glitch
-      </a>
-    </footer>
-
-    <!-- Your web-app is https, so your scripts need to be too -->
-    <script src="https://code.jquery.com/jquery-2.2.1.min.js"
-            integrity="sha256-gvQgAFzTH6trSrAWoH1iPo9Xc96QxSZ3feW6kem+O00="
-            crossorigin="anonymous"></script>
-    <script src="/client.js"></script>
-
+    <h4>
+      This project demonstrates the use of <b>live</b> websockets. Adding and removing stocks from the chart affects <b>all clients</b> live, so don't be surprised if things start getting added or deleted while you watch. If you want to demonstrate multiple clients you can open this page in multiple tabls/windows.
+    </h4>
+    <h4>
+      There is a max of 5 tickers to lessen API calls. Any additional stocks will just be ignored until one is removed. There is also a minimum of 1 ticker.
+    </h4>
+    <div id="container" style="height: 400px; min-width: 310px"></div>
+    <form action="">
+      <input id="m" autocomplete="off" /><button>Add Ticker</button>
+    </form>
+    <div class="tickerField"></div>
+    <p>
+      Any <span style="background-color: #FF0000">red</span> tickers could not be processed by the Yahoo Finance API
+    </p>
   </body>
 </html>
+  
+  
+  
+<script>
+  $(function () {
+    var socket = io();
+    //send message to add ticker
+    $('form').submit(function(){
+      socket.emit('add ticker', $('#m').val());
+      $('#m').val('');
+      return false;
+    });
+    
+    //send message to remove ticker
+    function removeTicker(ticker){
+      socket.emit('remove ticker', ticker);
+    }
+    
+    //update chart/ticker list when triggered by server
+    socket.on('chart update', function(msg){
+      drawChart(msg.chartData)
+      drawTickerField(msg.tickers)
+    });
+    
+    //use event propogation on ticker field 
+    //  allows one "onClick" for all dynamically added buttons
+    var wrapper= $(".tickerField"); 
+    $(wrapper).on( "click", "button", function( event ) {
+      event.preventDefault();
+      removeTicker($(this).attr('id'))
+    });
+
+    function drawTickerField(tickers){
+      $(wrapper).empty()
+      for (let i = 0; i < tickers.length; i++){
+        if (tickers[i].error){
+          //show a different button to let users know this ticker didn't process
+          $(wrapper).append("<button id='" + tickers[i].name + "' class='btn btn-danger' type='button'>" + tickers[i].name +" <span class='badge'>(x)</span></button>")
+        }else{
+          //non error button
+          $(wrapper).append("<button id='" + tickers[i].name + "' class='btn btn-primary' type='button'>" + tickers[i].name +" <span class='badge'>(x)</span></button>")
+        }
+
+      }
+    }
+    
+    function drawChart(series){
+      Highcharts.stockChart('container', {
+        rangeSelector: {selected: 1},
+        title: {ext: 'Stock Price'},
+        series: series, 
+        plotOptions: {
+          series: {
+            compare: 'percent',
+            showInNavigator: true
+          }
+        }
+      })
+    }
+  })    
+
+</script>

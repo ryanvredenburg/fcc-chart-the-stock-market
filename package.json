@@ -11,7 +11,10 @@
   },
   "dependencies": {
     "express": "^4.15.3",
-    "standard": "^10.0.3"
+    "standard": "^10.0.3",
+    "socket.io": "^2.0.3",
+    "yahoo-finance-data": "^3.2.0",
+    "dotenv": "^4.0.0"
   },
   "engines": {
     "node": "8.x"
